@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pocket Battle — A Quick Pokémon Game</title>
+<style>
+  :root {
+    --bg: #2b2d42;
+    --panel: #edf2f4;
+    --accent: #ef233c;
+    --accent2: #4361ee;
+    --hp-good: #06d6a0;
+    --hp-mid: #ffd166;
+    --hp-low: #ef476f;
+    --text: #1d1f2b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+    background: radial-gradient(circle at top, #3a3f63, var(--bg));
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .game {
+    width: 100%;
+    max-width: 460px;
+    background: var(--panel);
+    border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    overflow: hidden;
+  }
+  header {
+    background: var(--accent);
+    color: #fff;
+    text-align: center;
+    padding: 14px;
+  }
+  header h1 { margin: 0; font-size: 1.3rem; letter-spacing: 1px; }
+  header p { margin: 4px 0 0; font-size: 0.8rem; opacity: 0.9; }
+
+  .screen { padding: 18px; }
+  .hidden { display: none; }
+
+  /* Starter selection */
+  .starters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .starter {
+    cursor: pointer;
+    border: 3px solid transparent;
+    border-radius: 14px;
+    padding: 12px 6px;
+    text-align: center;
+    background: #fff;
+    transition: transform .12s, border-color .12s;
+  }
+  .starter:hover { transform: translateY(-4px); }
+  .starter.selected { border-color: var(--accent2); }
+  .starter .sprite { font-size: 2.6rem; }
+  .starter .name { font-weight: 700; margin-top: 4px; }
+  .starter .type { font-size: .72rem; color: #555; }
+
+  /* Battle arena */
+  .arena { display: flex; flex-direction: column; gap: 12px; }
+  .combatant {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
+  }
+  .combatant .row { display: flex; justify-content: space-between; align-items: center; }
+  .combatant .nm { font-weight: 700; }
+  .combatant .lvl { font-size: .75rem; color: #666; }
+  .combatant .sprite { font-size: 2.4rem; text-align: center; }
+  .enemy .sprite { transform: scaleX(-1); }
+  .hpbar {
+    height: 12px; border-radius: 8px; background: #d9d9d9;
+    overflow: hidden; margin-top: 6px;
+  }
+  .hpfill { height: 100%; width: 100%; background: var(--hp-good); transition: width .4s, background .4s; }
+  .hptext { font-size: .72rem; color: #555; margin-top: 3px; text-align: right; }
+
+  .log {
+    background: #1d1f2b; color: #d8e2dc; border-radius: 10px;
+    padding: 10px 12px; font-size: .82rem; min-height: 56px;
+    line-height: 1.4;
+  }
+
+  .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  button.move, .btn {
+    cursor: pointer; border: none; border-radius: 10px;
+    padding: 10px; font-size: .85rem; font-weight: 600; color: #fff;
+    background: var(--accent2); transition: filter .12s, transform .08s;
+  }
+  button.move:hover, .btn:hover { filter: brightness(1.08); }
+  button.move:active, .btn:active { transform: scale(.97); }
+  button.move:disabled { opacity: .5; cursor: not-allowed; }
+  .move small { display: block; font-weight: 400; opacity: .85; font-size: .68rem; }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn.secondary { background: #6c757d; }
+  .btn.full { width: 100%; }
+
+  .score { text-align: center; font-size: .85rem; color: #444; margin-top: 8px; }
+  .type-badge {
+    display: inline-block; font-size: .65rem; padding: 1px 6px;
+    border-radius: 6px; color: #fff; margin-left: 4px; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <header>
+    <h1>⚡ POCKET BATTLE ⚡</h1>
+    <p>A quick &amp; simple Pokémon game</p>
+  </header>
+
+  <!-- Start screen -->
+  <section id="start" class="screen">
+    <h2 style="margin-top:0;text-align:center;">Choose your partner!</h2>
+    <div class="starters" id="starters"></div>
+    <button class="btn full" id="startBtn" style="margin-top:14px;" disabled>Start Adventure</button>
+  </section>
+
+  <!-- Battle screen -->
+  <section id="battle" class="screen hidden">
+    <div class="arena">
+      <div class="combatant enemy" id="enemyBox">
+        <div class="row">
+          <span class="nm" id="enemyName">???</span>
+          <span class="lvl" id="enemyLvl">Lv 1</span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="enemyHp"></div></div>
+        <div class="hptext" id="enemyHpTxt"></div>
+        <div class="sprite" id="enemySprite">❓</div>
+      </div>
+
+      <div class="combatant" id="playerBox">
+        <div class="sprite" id="playerSprite">❓</div>
+        <div class="row">
+          <span class="nm" id="playerName">???</span>
+          <span class="lvl" id="playerLvl">Lv 1</span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="playerHp"></div></div>
+        <div class="hptext" id="playerHpTxt"></div>
+      </div>
+    </div>
+
+    <div class="log" id="log" style="margin-top:12px;">A wild Pokémon appeared!</div>
+
+    <div class="moves" id="moves"></div>
+    <div class="btn-row">
+      <button class="btn secondary full" id="runBtn">Run Away</button>
+    </div>
+    <div class="score" id="score">Wins: 0</div>
+  </section>
+
+  <!-- Game over screen -->
+  <section id="over" class="screen hidden" style="text-align:center;">
+    <h2 id="overTitle">Game Over</h2>
+    <div style="font-size:3rem;" id="overSprite">💫</div>
+    <p id="overMsg"></p>
+    <button class="btn full" id="againBtn">Play Again</button>
+  </section>
+</div>
+
+<script>
+/* ----------  Data  ---------- */
+const TYPE_COLORS = { Fire:'#ef476f', Water:'#118ab2', Grass:'#06d6a0', Electric:'#ffd166', Normal:'#8d99ae' };
+
+// type chart: attacker -> { defender: multiplier }
+const EFFECT = {
+  Fire:    { Grass:2, Water:.5, Fire:.5 },
+  Water:   { Fire:2, Grass:.5, Water:.5 },
+  Grass:   { Water:2, Fire:.5, Grass:.5 },
+  Electric:{ Water:2, Grass:.5, Electric:.5 },
+  Normal:  {}
+};
+
+const STARTERS = [
+  { name:'Flamepup', type:'Fire',  sprite:'🦊', maxHp:60,
+    moves:[ {name:'Ember', type:'Fire', power:14}, {name:'Scratch', type:'Normal', power:10} ] },
+  { name:'Aquafin',  type:'Water', sprite:'🐢', maxHp:68,
+    moves:[ {name:'Bubble', type:'Water', power:14}, {name:'Tackle', type:'Normal', power:10} ] },
+  { name:'Leaflet',  type:'Grass', sprite:'🦎', maxHp:64,
+    moves:[ {name:'Vine Whip', type:'Grass', power:14}, {name:'Pound', type:'Normal', power:10} ] },
+];
+
+const WILD_POOL = [
+  { name:'Sparkmouse', type:'Electric', sprite:'🐭', moves:[{name:'Spark',type:'Electric',power:13},{name:'Quick Attack',type:'Normal',power:9}] },
+  { name:'Pebblebird', type:'Normal',   sprite:'🐦', moves:[{name:'Peck',type:'Normal',power:12},{name:'Gust',type:'Normal',power:10}] },
+  { name:'Cinderbat',  type:'Fire',     sprite:'🦇', moves:[{name:'Ember',type:'Fire',power:13},{name:'Bite',type:'Normal',power:10}] },
+  { name:'Dewdrop',    type:'Water',    sprite:'🐸', moves:[{name:'Splash',type:'Water',power:13},{name:'Headbutt',type:'Normal',power:10}] },
+  { name:'Mossling',   type:'Grass',    sprite:'🐛', moves:[{name:'Leafage',type:'Grass',power:13},{name:'Tackle',type:'Normal',power:10}] },
+];
+
+/* ----------  State  ---------- */
+let player, enemy, wins, chosenIndex = null, busy = false;
+
+/* ----------  Helpers  ---------- */
+const $ = id => document.getElementById(id);
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+
+function typeBadge(t){
+  return `<span class="type-badge" style="background:${TYPE_COLORS[t]}">${t}</span>`;
+}
+
+function effectiveness(atkType, defType){
+  return (EFFECT[atkType] && EFFECT[atkType][defType]) || 1;
+}
+
+/* ----------  Setup screens  ---------- */
+function renderStarters(){
+  const box = $('starters');
+  box.innerHTML = '';
+  STARTERS.forEach((s,i)=>{
+    const el = document.createElement('div');
+    el.className = 'starter';
+    el.innerHTML = `<div class="sprite">${s.sprite}</div>
+                    <div class="name">${s.name}</div>
+                    <div class="type">${s.type}</div>`;
+    el.onclick = () => {
+      chosenIndex = i;
+      document.querySelectorAll('.starter').forEach(e=>e.classList.remove('selected'));
+      el.classList.add('selected');
+      $('startBtn').disabled = false;
+    };
+    box.appendChild(el);
+  });
+}
+
+function startGame(){
+  const base = STARTERS[chosenIndex];
+  player = {
+    name: base.name, type: base.type, sprite: base.sprite,
+    maxHp: base.maxHp, hp: base.maxHp, level: 5, moves: base.moves
+  };
+  wins = 0;
+  $('start').classList.add('hidden');
+  $('over').classList.add('hidden');
+  $('battle').classList.remove('hidden');
+  spawnEnemy();
+}
+
+function spawnEnemy(){
+  const base = WILD_POOL[rand(0, WILD_POOL.length-1)];
+  const level = Math.max(3, player.level + rand(-1, 1));
+  const maxHp = 40 + level*4;
+  enemy = {
+    name: base.name, type: base.type, sprite: base.sprite,
+    maxHp, hp: maxHp, level, moves: base.moves
+  };
+  busy = false;
+  renderBattle();
+  log(`A wild <b>${enemy.name}</b> ${typeBadge(enemy.type)} appeared!`);
+  renderMoves();
+}
+
+/* ----------  Rendering  ---------- */
+function hpColor(ratio){
+  return ratio > .5 ? 'var(--hp-good)' : ratio > .25 ? 'var(--hp-mid)' : 'var(--hp-low)';
+}
+
+function renderBattle(){
+  $('enemyName').innerHTML = enemy.name + typeBadge(enemy.type);
+  $('enemyLvl').textContent = 'Lv ' + enemy.level;
+  $('enemySprite').textContent = enemy.sprite;
+  $('playerName').innerHTML = player.name + typeBadge(player.type);
+  $('playerLvl').textContent = 'Lv ' + player.level;
+  $('playerSprite').textContent = player.sprite;
+  updateHp();
+  $('score').textContent = 'Wins: ' + wins;
+}
+
+function updateHp(){
+  const er = Math.max(0, enemy.hp)/enemy.maxHp;
+  const pr = Math.max(0, player.hp)/player.maxHp;
+  $('enemyHp').style.width = (er*100)+'%';
+  $('enemyHp').style.background = hpColor(er);
+  $('playerHp').style.width = (pr*100)+'%';
+  $('playerHp').style.background = hpColor(pr);
+  $('enemyHpTxt').textContent = `${Math.max(0,enemy.hp)} / ${enemy.maxHp} HP`;
+  $('playerHpTxt').textContent = `${Math.max(0,player.hp)} / ${player.maxHp} HP`;
+}
+
+function renderMoves(){
+  const box = $('moves');
+  box.innerHTML = '';
+  player.moves.forEach(m=>{
+    const b = document.createElement('button');
+    b.className = 'move';
+    b.innerHTML = `${m.name}<small>${m.type} · pow ${m.power}</small>`;
+    b.onclick = () => playerTurn(m);
+    box.appendChild(b);
+  });
+}
+
+function setMovesDisabled(state){
+  document.querySelectorAll('.move').forEach(b => b.disabled = state);
+  $('runBtn').disabled = state;
+}
+
+let logHtml = '';
+function log(msg){
+  logHtml = msg;
+  $('log').innerHTML = msg;
+}
+
+/* ----------  Combat  ---------- */
+function damage(attacker, defender, move){
+  const eff = effectiveness(move.type, defender.type);
+  const stab = move.type === attacker.type ? 1.5 : 1;        // same-type bonus
+  const variance = rand(85, 100)/100;
+  const dmg = Math.max(1, Math.round(move.power * stab * eff * variance));
+  defender.hp -= dmg;
+  return { dmg, eff };
+}
+
+function effLabel(eff){
+  if (eff > 1) return ' It\'s super effective!';
+  if (eff < 1) return ' It\'s not very effective…';
+  return '';
+}
+
+function playerTurn(move){
+  if (busy) return;
+  busy = true;
+  setMovesDisabled(true);
+
+  const r = damage(player, enemy, move);
+  log(`${player.name} used <b>${move.name}</b>! Dealt ${r.dmg} damage.${effLabel(r.eff)}`);
+  updateHp();
+
+  setTimeout(()=>{
+    if (enemy.hp <= 0){ winRound(); return; }
+    enemyTurn();
+  }, 900);
+}
+
+function enemyTurn(){
+  const move = enemy.moves[rand(0, enemy.moves.length-1)];
+  const r = damage(enemy, player, move);
+  log(`Wild ${enemy.name} used <b>${move.name}</b>! Dealt ${r.dmg} damage.${effLabel(r.eff)}`);
+  updateHp();
+
+  setTimeout(()=>{
+    if (player.hp <= 0){ gameOver(); return; }
+    busy = false;
+    setMovesDisabled(false);
+  }, 900);
+}
+
+function winRound(){
+  wins++;
+  // level up + heal a bit as reward
+  player.level++;
+  const boost = 6;
+  player.maxHp += boost;
+  player.hp = Math.min(player.maxHp, player.hp + 12);
+  log(`<b>${enemy.name} fainted!</b> ${player.name} grew to Lv ${player.level}! (+${boost} max HP)`);
+  $('score').textContent = 'Wins: ' + wins;
+  updateHp();
+  setMovesDisabled(true);
+  setTimeout(spawnEnemy, 1400);
+}
+
+function gameOver(){
+  setMovesDisabled(true);
+  $('battle').classList.add('hidden');
+  $('over').classList.remove('hidden');
+  $('overTitle').textContent = wins > 0 ? 'You did great!' : 'Game Over';
+  $('overSprite').textContent = player.sprite;
+  $('overMsg').innerHTML = `${player.name} fainted after <b>${wins}</b> win${wins===1?'':'s'}.<br>Final level: ${player.level}.`;
+}
+
+function runAway(){
+  if (busy) return;
+  // 50% chance to escape; otherwise enemy gets a free hit
+  if (Math.random() < 0.5){
+    log('Got away safely! A new challenger approaches…');
+    busy = true;
+    setMovesDisabled(true);
+    setTimeout(spawnEnemy, 1100);
+  } else {
+    log("Couldn't escape!");
+    busy = true;
+    setMovesDisabled(true);
+    setTimeout(enemyTurn, 800);
+  }
+}
+
+/* ----------  Wiring  ---------- */
+$('startBtn').onclick = startGame;
+$('runBtn').onclick = runAway;
+$('againBtn').onclick = () => {
+  $('over').classList.add('hidden');
+  $('start').classList.remove('hidden');
+  chosenIndex = null;
+  $('startBtn').disabled = true;
+  renderStarters();
+};
+
+renderStarters();
+</script>
+</body>
+</html>
