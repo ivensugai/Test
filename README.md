@@ -21,5 +21,8 @@ Open `index.html` in any modern browser. That's it.
 - **STAB** — using a move that matches your type adds a 1.5× bonus.
 - **Run Away** — 50% chance to flee to a fresh encounter; fail and the
   enemy gets a free hit.
+- **Sound** — retro 8-bit-style effects (hits, super-effective stings,
+  faint, victory jingle) synthesized live with the Web Audio API — no
+  audio files. Toggle with the 🔊 button in the top-right.
 
 Have fun! 🦊🐢🦎
