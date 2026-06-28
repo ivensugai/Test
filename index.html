@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pocket Battle — A Quick Pokémon Game</title>
+<title>Dragon Quest Lite — A Quick Pokémon Adventure</title>
 <style>
   :root {
     --bg: #2b2d42;
@@ -14,6 +14,7 @@
     --hp-mid: #ffd166;
     --hp-low: #ef476f;
     --text: #1d1f2b;
+    --tile: 26px;
   }
   * { box-sizing: border-box; }
   body {
@@ -42,8 +43,8 @@
     text-align: center;
     padding: 14px;
   }
-  header h1 { margin: 0; font-size: 1.3rem; letter-spacing: 1px; }
-  header p { margin: 4px 0 0; font-size: 0.8rem; opacity: 0.9; }
+  header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+  header p { margin: 4px 0 0; font-size: 0.78rem; opacity: 0.9; }
   #muteBtn {
     position: absolute; top: 10px; right: 10px;
     background: rgba(255,255,255,0.18); color: #fff;
@@ -74,12 +75,74 @@
   .starter .name { font-weight: 700; margin-top: 4px; }
   .starter .type { font-size: .72rem; color: #555; }
 
-  /* Battle arena */
+  .quest-intro {
+    background: #fff; border-radius: 12px; padding: 12px 14px;
+    font-size: .85rem; line-height: 1.45; margin-top: 14px;
+  }
+  .quest-intro b { color: var(--accent); }
+
+  /* ----- Overworld ----- */
+  .overworld { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .hud {
+    width: 100%; background: #fff; border-radius: 12px; padding: 8px 12px;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
+  }
+  .hud .quest { font-size: .78rem; color: #444; margin-bottom: 6px; }
+  .hud .quest b { color: var(--accent2); }
+  .hud .row { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; }
+  .hud .nm { font-weight: 700; }
+  .hpbar { height: 12px; border-radius: 8px; background: #d9d9d9; overflow: hidden; margin-top: 5px; }
+  .hpfill { height: 100%; width: 100%; background: var(--hp-good); transition: width .4s, background .4s; }
+  .hptext { font-size: .72rem; color: #555; margin-top: 3px; text-align: right; }
+
+  .map {
+    display: grid;
+    grid-template-columns: repeat(15, var(--tile));
+    grid-auto-rows: var(--tile);
+    gap: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    user-select: none;
+  }
+  .cell {
+    width: var(--tile); height: var(--tile);
+    display: grid; place-items: center;
+    font-size: 16px; line-height: 1;
+  }
+  .cell.grass { background: #7ec850; }
+  .cell.road  { background: #e3c887; }
+  .cell.tree  { background: #4fa05a; }
+  .cell.water { background: #4aa3df; }
+  .cell.mtn   { background: #a89b8c; }
+  .cell.home  { background: #7ec850; }
+  .cell.castle{ background: #e3c887; }
+  .cell .hero { filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
+
+  .toast {
+    width: 100%; min-height: 20px; text-align: center;
+    font-size: .8rem; color: #1d1f2b; font-weight: 600;
+  }
+
+  /* D-pad */
+  .dpad { display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 6px; }
+  .dpad button {
+    border: none; border-radius: 10px; background: var(--accent2); color: #fff;
+    font-size: 1.2rem; cursor: pointer; transition: filter .1s, transform .06s;
+  }
+  .dpad button:hover { filter: brightness(1.1); }
+  .dpad button:active { transform: scale(.93); }
+  .dpad .up { grid-area: 1 / 2; }
+  .dpad .left { grid-area: 2 / 1; }
+  .dpad .right { grid-area: 2 / 3; }
+  .dpad .down { grid-area: 3 / 2; }
+  .dpad .spacer { background: transparent; cursor: default; }
+  .hint { font-size: .72rem; color: #666; text-align: center; }
+
+  /* ----- Battle ----- */
   .arena { display: flex; flex-direction: column; gap: 12px; }
   .combatant {
-    background: #fff;
-    border-radius: 12px;
-    padding: 10px 12px;
+    background: #fff; border-radius: 12px; padding: 10px 12px;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
   }
   .combatant .row { display: flex; justify-content: space-between; align-items: center; }
@@ -87,19 +150,11 @@
   .combatant .lvl { font-size: .75rem; color: #666; }
   .combatant .sprite { font-size: 2.4rem; text-align: center; }
   .enemy .sprite { transform: scaleX(-1); }
-  .hpbar {
-    height: 12px; border-radius: 8px; background: #d9d9d9;
-    overflow: hidden; margin-top: 6px;
-  }
-  .hpfill { height: 100%; width: 100%; background: var(--hp-good); transition: width .4s, background .4s; }
-  .hptext { font-size: .72rem; color: #555; margin-top: 3px; text-align: right; }
 
   .log {
     background: #1d1f2b; color: #d8e2dc; border-radius: 10px;
-    padding: 10px 12px; font-size: .82rem; min-height: 56px;
-    line-height: 1.4;
+    padding: 10px 12px; font-size: .82rem; min-height: 56px; line-height: 1.4;
   }
-
   .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
   button.move, .btn {
     cursor: pointer; border: none; border-radius: 10px;
@@ -108,13 +163,12 @@
   }
   button.move:hover, .btn:hover { filter: brightness(1.08); }
   button.move:active, .btn:active { transform: scale(.97); }
-  button.move:disabled { opacity: .5; cursor: not-allowed; }
+  button.move:disabled, .btn:disabled { opacity: .5; cursor: not-allowed; }
   .move small { display: block; font-weight: 400; opacity: .85; font-size: .68rem; }
   .btn-row { display: flex; gap: 8px; margin-top: 10px; }
   .btn.secondary { background: #6c757d; }
   .btn.full { width: 100%; }
 
-  .score { text-align: center; font-size: .85rem; color: #444; margin-top: 8px; }
   .type-badge {
     display: inline-block; font-size: .65rem; padding: 1px 6px;
     border-radius: 6px; color: #fff; margin-left: 4px; vertical-align: middle;
@@ -125,15 +179,48 @@
 <div class="game">
   <header>
     <button id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔊</button>
-    <h1>⚡ POCKET BATTLE ⚡</h1>
-    <p>A quick &amp; simple Pokémon game</p>
+    <h1>🐉 DRAGON QUEST LITE 🐉</h1>
+    <p>A quick Pokémon-style adventure</p>
   </header>
 
   <!-- Start screen -->
   <section id="start" class="screen">
     <h2 style="margin-top:0;text-align:center;">Choose your partner!</h2>
     <div class="starters" id="starters"></div>
-    <button class="btn full" id="startBtn" style="margin-top:14px;" disabled>Start Adventure</button>
+    <div class="quest-intro">
+      <b>⚔️ Your Quest:</b> The <b>Dragon Lord</b> 🐉 has seized the castle to
+      the east. Cross the wilds, battle monsters in the tall grass 🟩 to grow
+      stronger, rest at <b>home</b> 🏠 to heal, and reach the <b>castle</b> 🏰
+      to defeat him. Beware — if you faint, the quest is over!
+    </div>
+    <button class="btn full" id="startBtn" style="margin-top:14px;" disabled>Begin the Quest</button>
+  </section>
+
+  <!-- Overworld screen -->
+  <section id="overworld" class="screen hidden">
+    <div class="overworld">
+      <div class="hud">
+        <div class="quest" id="quest"></div>
+        <div class="row">
+          <span class="nm" id="owName">Hero</span>
+          <span id="owLvl">Lv 1</span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="owHp"></div></div>
+        <div class="hptext" id="owHpTxt"></div>
+      </div>
+
+      <div class="map" id="map"></div>
+      <div class="toast" id="toast">Use the arrows / WASD to explore.</div>
+
+      <div class="dpad">
+        <button class="up" data-dir="up">▲</button>
+        <button class="left" data-dir="left">◀</button>
+        <button class="spacer" disabled></button>
+        <button class="right" data-dir="right">▶</button>
+        <button class="down" data-dir="down">▼</button>
+      </div>
+      <div class="hint">Tall grass 🟩 hides monsters · roads 🟫 are safe · 🏠 heals you</div>
+    </div>
   </section>
 
   <!-- Battle screen -->
@@ -160,16 +247,15 @@
       </div>
     </div>
 
-    <div class="log" id="log" style="margin-top:12px;">A wild Pokémon appeared!</div>
+    <div class="log" id="log" style="margin-top:12px;">A wild monster appeared!</div>
 
     <div class="moves" id="moves"></div>
     <div class="btn-row">
       <button class="btn secondary full" id="runBtn">Run Away</button>
     </div>
-    <div class="score" id="score">Wins: 0</div>
   </section>
 
-  <!-- Game over screen -->
+  <!-- Game over / victory screen -->
   <section id="over" class="screen hidden" style="text-align:center;">
     <h2 id="overTitle">Game Over</h2>
     <div style="font-size:3rem;" id="overSprite">💫</div>
@@ -180,7 +266,7 @@
 
 <script>
 /* ----------  Data  ---------- */
-const TYPE_COLORS = { Fire:'#ef476f', Water:'#118ab2', Grass:'#06d6a0', Electric:'#ffd166', Normal:'#8d99ae' };
+const TYPE_COLORS = { Fire:'#ef476f', Water:'#118ab2', Grass:'#06d6a0', Electric:'#ffd166', Normal:'#8d99ae', Dragon:'#7048e8' };
 
 // type chart: attacker -> { defender: multiplier }
 const EFFECT = {
@@ -188,6 +274,7 @@ const EFFECT = {
   Water:   { Fire:2, Grass:.5, Water:.5 },
   Grass:   { Water:2, Fire:.5, Grass:.5 },
   Electric:{ Water:2, Grass:.5, Electric:.5 },
+  Dragon:  { Dragon:2 },
   Normal:  {}
 };
 
@@ -206,10 +293,33 @@ const WILD_POOL = [
   { name:'Cinderbat',  type:'Fire',     sprite:'🦇', moves:[{name:'Ember',type:'Fire',power:13},{name:'Bite',type:'Normal',power:10}] },
   { name:'Dewdrop',    type:'Water',    sprite:'🐸', moves:[{name:'Splash',type:'Water',power:13},{name:'Headbutt',type:'Normal',power:10}] },
   { name:'Mossling',   type:'Grass',    sprite:'🐛', moves:[{name:'Leafage',type:'Grass',power:13},{name:'Tackle',type:'Normal',power:10}] },
+  { name:'Wisp',       type:'Fire',     sprite:'👻', moves:[{name:'Hex',type:'Fire',power:12},{name:'Lick',type:'Normal',power:10}] },
 ];
 
+// Map legend: G grass(encounters) R road(safe) T tree W water M mountain H home C castle
+const MAP = [
+  "TTTTTTTTTTTTTTT",
+  "THRRRGGGTTGGGGT",
+  "TGGGRGGGGTGGWGT",
+  "TGWGRRRRGGGRRGT",
+  "TGWWGGGRGGGRGGT",
+  "TGGGGTGRGGGRGGT",
+  "TGRRRRRRRRRRRGT",
+  "TGRGGGGWWGGGGGT",
+  "TGRGMMGGGGGTGCT",
+  "TGGGMGGGGGGTGGT",
+  "TTTTTTTTTTTTTTT",
+];
+const ROWS = MAP.length, COLS = MAP[0].length;
+const WALKABLE = { G:1, R:1, H:1, C:1 };
+const ENCOUNTER_RATE = 0.18;
+const QUEST_GOAL_WINS = 3; // suggested fights before the boss is sensible
+
 /* ----------  State  ---------- */
-let player, enemy, wins, chosenIndex = null, busy = false;
+let player, enemy, chosenIndex = null, busy = false;
+let px = 0, py = 0;            // player tile coords (col,row)
+let steps = 0, wins = 0;
+let bossDefeated = false, overworldReady = false;
 
 /* ----------  Helpers  ---------- */
 const $ = id => document.getElementById(id);
@@ -219,7 +329,6 @@ const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
 const Sound = {
   ctx: null,
   muted: false,
-  // Lazily create the AudioContext (browsers require a user gesture first)
   init(){
     if (!this.ctx){
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -227,7 +336,6 @@ const Sound = {
     }
     if (this.ctx){
       if (this.ctx.state === 'suspended') this.ctx.resume();
-      // Unlock audio on iOS/Safari by playing one near-silent buffer
       try {
         const b = this.ctx.createBuffer(1, 1, 22050);
         const s = this.ctx.createBufferSource();
@@ -235,7 +343,6 @@ const Sound = {
       } catch(e){ /* ignore */ }
     }
   },
-  // Play a single tone
   tone(freq, dur, type='square', vol=0.15, delay=0){
     if (this.muted || !this.ctx) return;
     const t = this.ctx.currentTime + delay;
@@ -249,17 +356,19 @@ const Sound = {
     osc.start(t);
     osc.stop(t + dur);
   },
-  // Play a sequence of [freq, duration] steps back to back
   sequence(steps, type='square', vol=0.15){
     let d = 0;
     for (const [f, dur] of steps){ this.tone(f, dur, type, vol, d); d += dur; }
   },
-
+  step(){       this.tone(220, 0.04, 'square', 0.06); },
   hit(){        this.tone(180, 0.12, 'square', 0.14); this.tone(120, 0.16, 'sawtooth', 0.10, 0.04); },
   superEff(){   this.sequence([[400,0.06],[600,0.06],[880,0.12]], 'square', 0.16); },
   weakEff(){    this.tone(160, 0.18, 'sine', 0.12); },
   faint(){      this.sequence([[400,0.12],[300,0.12],[200,0.18],[120,0.28]], 'sawtooth', 0.14); },
   win(){        this.sequence([[523,0.1],[659,0.1],[784,0.1],[1047,0.22]], 'square', 0.15); },
+  encounter(){  this.sequence([[300,0.08],[500,0.08],[300,0.08],[500,0.16]], 'square', 0.14); },
+  heal(){       this.sequence([[660,0.1],[880,0.1],[1100,0.18]], 'sine', 0.14); },
+  victory(){    this.sequence([[523,0.14],[659,0.14],[784,0.14],[1047,0.16],[784,0.12],[1047,0.34]], 'square', 0.16); },
   select(){     this.tone(660, 0.08, 'square', 0.12); },
   click(){      this.tone(440, 0.06, 'square', 0.10); }
 };
@@ -267,12 +376,11 @@ const Sound = {
 function typeBadge(t){
   return `<span class="type-badge" style="background:${TYPE_COLORS[t]}">${t}</span>`;
 }
-
 function effectiveness(atkType, defType){
   return (EFFECT[atkType] && EFFECT[atkType][defType]) || 1;
 }
 
-/* ----------  Setup screens  ---------- */
+/* ----------  Start screen  ---------- */
 function renderStarters(){
   const box = $('starters');
   box.innerHTML = '';
@@ -302,32 +410,141 @@ function startGame(){
     name: base.name, type: base.type, sprite: base.sprite,
     maxHp: base.maxHp, hp: base.maxHp, level: 5, moves: base.moves
   };
-  wins = 0;
+  steps = 0; wins = 0; bossDefeated = false;
+  // place player at home (H)
+  findTile('H');
   $('start').classList.add('hidden');
   $('over').classList.add('hidden');
-  $('battle').classList.remove('hidden');
-  spawnEnemy();
+  $('battle').classList.add('hidden');
+  $('overworld').classList.remove('hidden');
+  renderMap();
+  updateHud();
+  toast('Your adventure begins! Head east to the castle 🏰.');
+  overworldReady = true;
 }
 
-function spawnEnemy(){
+function findTile(ch){
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+    if (MAP[r][c]===ch){ py=r; px=c; return; }
+}
+
+/* ----------  Overworld  ---------- */
+function tileClass(ch){
+  return ({ G:'grass', R:'road', T:'tree', W:'water', M:'mtn', H:'home', C:'castle' })[ch] || 'grass';
+}
+function tileEmoji(ch){
+  return ({ T:'🌲', W:'🌊', M:'⛰️', H:'🏠', C:'🏰' })[ch] || '';
+}
+
+function renderMap(){
+  const map = $('map');
+  map.innerHTML = '';
+  for (let r=0;r<ROWS;r++){
+    for (let c=0;c<COLS;c++){
+      const ch = MAP[r][c];
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + tileClass(ch);
+      if (r===py && c===px){
+        cell.innerHTML = `<span class="hero">${player.sprite}</span>`;
+      } else {
+        cell.textContent = tileEmoji(ch);
+      }
+      map.appendChild(cell);
+    }
+  }
+}
+
+function updateHud(){
+  const pr = Math.max(0, player.hp)/player.maxHp;
+  $('owHp').style.width = (pr*100)+'%';
+  $('owHp').style.background = hpColor(pr);
+  $('owHpTxt').textContent = `${Math.max(0,player.hp)} / ${player.maxHp} HP`;
+  $('owName').innerHTML = player.name + typeBadge(player.type);
+  $('owLvl').textContent = 'Lv ' + player.level;
+  const remaining = bossDefeated ? 0 : 1;
+  $('quest').innerHTML = bossDefeated
+    ? `⚔️ <b>Quest complete!</b> The Dragon Lord is defeated. 🎉`
+    : `⚔️ <b>Quest:</b> Defeat the Dragon Lord at the castle 🏰 &nbsp;·&nbsp; Monsters beaten: <b>${wins}</b>`;
+}
+
+function toast(msg){ $('toast').textContent = msg; }
+
+function move(dir){
+  if (!overworldReady || busy) return;
+  const d = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] }[dir];
+  if (!d) return;
+  const nx = px + d[0], ny = py + d[1];
+  if (nx<0||ny<0||nx>=COLS||ny>=ROWS) return;
+  const ch = MAP[ny][nx];
+  if (!WALKABLE[ch]){ toast('🚫 You can\'t go that way.'); return; }
+
+  px = nx; py = ny; steps++;
+  Sound.step();
+  renderMap();
+
+  if (ch === 'C' && !bossDefeated){ startBoss(); return; }
+  if (ch === 'H'){
+    if (player.hp < player.maxHp){
+      player.hp = player.maxHp;
+      Sound.heal();
+      toast('🏠 You rest at home. HP fully restored!');
+    } else {
+      toast('🏠 Home sweet home.');
+    }
+    updateHud();
+    return;
+  }
+  if (ch === 'C' && bossDefeated){ toast('🏰 The castle is free once more.'); return; }
+  if (ch === 'G' && Math.random() < ENCOUNTER_RATE){ startEncounter(); return; }
+  toast(ch === 'R' ? '🟫 The road is safe here.' : 'Exploring…');
+}
+
+/* ----------  Battle setup  ---------- */
+function spawnWildEnemy(){
   const base = WILD_POOL[rand(0, WILD_POOL.length-1)];
   const level = Math.max(3, player.level + rand(-1, 1));
-  const maxHp = 40 + level*4;
-  enemy = {
-    name: base.name, type: base.type, sprite: base.sprite,
-    maxHp, hp: maxHp, level, moves: base.moves
+  const maxHp = 36 + level*4;
+  return { name: base.name, type: base.type, sprite: base.sprite,
+           maxHp, hp: maxHp, level, moves: base.moves, isBoss:false };
+}
+function makeBoss(){
+  const level = Math.max(10, player.level + 2);
+  const maxHp = 110 + level*3;
+  return {
+    name:'Dragon Lord', type:'Dragon', sprite:'🐉',
+    maxHp, hp:maxHp, level, isBoss:true,
+    moves:[ {name:'Dragon Breath', type:'Fire', power:18},
+            {name:'Tail Slam',     type:'Normal', power:15} ]
   };
+}
+
+function startEncounter(){
+  enemy = spawnWildEnemy();
+  Sound.encounter();
+  enterBattle(`A wild <b>${enemy.name}</b> ${typeBadge(enemy.type)} leapt from the grass!`);
+}
+function startBoss(){
+  enemy = makeBoss();
+  Sound.encounter();
+  enterBattle(`👑 The <b>Dragon Lord</b> ${typeBadge(enemy.type)} blocks your path! This is the final battle!`);
+}
+
+function enterBattle(introMsg){
+  overworldReady = false;
   busy = false;
+  $('overworld').classList.add('hidden');
+  $('battle').classList.remove('hidden');
+  // run button disabled for the boss
+  $('runBtn').style.display = enemy.isBoss ? 'none' : '';
   renderBattle();
-  log(`A wild <b>${enemy.name}</b> ${typeBadge(enemy.type)} appeared!`);
+  log(introMsg);
   renderMoves();
 }
 
-/* ----------  Rendering  ---------- */
+/* ----------  Battle rendering  ---------- */
 function hpColor(ratio){
   return ratio > .5 ? 'var(--hp-good)' : ratio > .25 ? 'var(--hp-mid)' : 'var(--hp-low)';
 }
-
 function renderBattle(){
   $('enemyName').innerHTML = enemy.name + typeBadge(enemy.type);
   $('enemyLvl').textContent = 'Lv ' + enemy.level;
@@ -336,9 +553,7 @@ function renderBattle(){
   $('playerLvl').textContent = 'Lv ' + player.level;
   $('playerSprite').textContent = player.sprite;
   updateHp();
-  $('score').textContent = 'Wins: ' + wins;
 }
-
 function updateHp(){
   const er = Math.max(0, enemy.hp)/enemy.maxHp;
   const pr = Math.max(0, player.hp)/player.maxHp;
@@ -349,7 +564,6 @@ function updateHp(){
   $('enemyHpTxt').textContent = `${Math.max(0,enemy.hp)} / ${enemy.maxHp} HP`;
   $('playerHpTxt').textContent = `${Math.max(0,player.hp)} / ${player.maxHp} HP`;
 }
-
 function renderMoves(){
   const box = $('moves');
   box.innerHTML = '';
@@ -361,34 +575,26 @@ function renderMoves(){
     box.appendChild(b);
   });
 }
-
 function setMovesDisabled(state){
   document.querySelectorAll('.move').forEach(b => b.disabled = state);
   $('runBtn').disabled = state;
 }
-
-let logHtml = '';
-function log(msg){
-  logHtml = msg;
-  $('log').innerHTML = msg;
-}
+function log(msg){ $('log').innerHTML = msg; }
 
 /* ----------  Combat  ---------- */
 function damage(attacker, defender, move){
   const eff = effectiveness(move.type, defender.type);
-  const stab = move.type === attacker.type ? 1.5 : 1;        // same-type bonus
+  const stab = move.type === attacker.type ? 1.5 : 1;
   const variance = rand(85, 100)/100;
   const dmg = Math.max(1, Math.round(move.power * stab * eff * variance));
   defender.hp -= dmg;
   return { dmg, eff };
 }
-
 function effLabel(eff){
   if (eff > 1) return ' It\'s super effective!';
   if (eff < 1) return ' It\'s not very effective…';
   return '';
 }
-
 function playHitSound(eff){
   Sound.hit();
   if (eff > 1) Sound.superEff();
@@ -399,70 +605,93 @@ function playerTurn(move){
   if (busy) return;
   busy = true;
   setMovesDisabled(true);
-
   const r = damage(player, enemy, move);
   log(`${player.name} used <b>${move.name}</b>! Dealt ${r.dmg} damage.${effLabel(r.eff)}`);
   playHitSound(r.eff);
   updateHp();
-
   setTimeout(()=>{
-    if (enemy.hp <= 0){ winRound(); return; }
+    if (enemy.hp <= 0){ onBattleWon(); return; }
     enemyTurn();
   }, 900);
 }
-
 function enemyTurn(){
   const move = enemy.moves[rand(0, enemy.moves.length-1)];
   const r = damage(enemy, player, move);
-  log(`Wild ${enemy.name} used <b>${move.name}</b>! Dealt ${r.dmg} damage.${effLabel(r.eff)}`);
+  log(`${enemy.isBoss?'':'Wild '}${enemy.name} used <b>${move.name}</b>! Dealt ${r.dmg} damage.${effLabel(r.eff)}`);
   playHitSound(r.eff);
   updateHp();
-
   setTimeout(()=>{
-    if (player.hp <= 0){ gameOver(); return; }
+    if (player.hp <= 0){ gameOver(false); return; }
     busy = false;
     setMovesDisabled(false);
   }, 900);
 }
 
-function winRound(){
+function onBattleWon(){
+  setMovesDisabled(true);
+  if (enemy.isBoss){
+    bossDefeated = true;
+    Sound.victory();
+    log(`<b>The Dragon Lord falls!</b> 🎉 You have saved the land!`);
+    setTimeout(()=>gameOver(true), 1600);
+    return;
+  }
   wins++;
-  // level up + heal a bit as reward
   player.level++;
   const boost = 6;
   player.maxHp += boost;
-  player.hp = Math.min(player.maxHp, player.hp + 12);
-  log(`<b>${enemy.name} fainted!</b> ${player.name} grew to Lv ${player.level}! (+${boost} max HP)`);
+  player.hp = Math.min(player.maxHp, player.hp + 14); // small heal reward
   Sound.win();
-  $('score').textContent = 'Wins: ' + wins;
-  updateHp();
-  setMovesDisabled(true);
-  setTimeout(spawnEnemy, 1400);
+  log(`<b>${enemy.name} fainted!</b> ${player.name} grew to Lv ${player.level}! (+${boost} max HP)`);
+  setTimeout(returnToOverworld, 1400);
 }
 
-function gameOver(){
-  Sound.faint();
-  setMovesDisabled(true);
+function returnToOverworld(){
   $('battle').classList.add('hidden');
-  $('over').classList.remove('hidden');
-  $('overTitle').textContent = wins > 0 ? 'You did great!' : 'Game Over';
-  $('overSprite').textContent = player.sprite;
-  $('overMsg').innerHTML = `${player.name} fainted after <b>${wins}</b> win${wins===1?'':'s'}.<br>Final level: ${player.level}.`;
+  $('overworld').classList.remove('hidden');
+  updateHud();
+  renderMap();
+  busy = false;
+  overworldReady = true;
+  const tip = wins < QUEST_GOAL_WINS
+    ? `Victory! Keep training — beat a few more before facing the Dragon Lord.`
+    : `Victory! You're growing strong. The castle 🏰 awaits to the east.`;
+  toast(tip);
 }
 
 function runAway(){
   if (busy) return;
-  // 50% chance to escape; otherwise enemy gets a free hit
+  if (enemy.isBoss){ log('There is no escaping the Dragon Lord!'); return; }
   if (Math.random() < 0.5){
-    log('Got away safely! A new challenger approaches…');
+    log('Got away safely!');
     busy = true;
     setMovesDisabled(true);
-    setTimeout(spawnEnemy, 1100);
+    setTimeout(returnToOverworld, 1000);
   } else {
     log("Couldn't escape!");
     busy = true;
     setMovesDisabled(true);
     setTimeout(enemyTurn, 800);
+  }
+}
+
+function gameOver(victory){
+  setMovesDisabled(true);
+  overworldReady = false;
+  if (!victory) Sound.faint();
+  $('battle').classList.add('hidden');
+  $('overworld').classList.add('hidden');
+  $('over').classList.remove('hidden');
+  if (victory){
+    $('overTitle').textContent = '🏆 Victory!';
+    $('overSprite').textContent = '🐉';
+    $('overMsg').innerHTML = `You defeated the <b>Dragon Lord</b> and saved the land!<br>
+      Monsters beaten: <b>${wins}</b> · Final level: <b>${player.level}</b> · Steps: <b>${steps}</b>`;
+  } else {
+    $('overTitle').textContent = 'Your quest ends…';
+    $('overSprite').textContent = player.sprite;
+    $('overMsg').innerHTML = `${player.name} fainted after <b>${wins}</b> victor${wins===1?'y':'ies'}.<br>
+      The Dragon Lord still rules. Reached level <b>${player.level}</b>.`;
   }
 }
 
@@ -478,6 +707,22 @@ $('againBtn').onclick = () => {
   renderStarters();
 };
 
+// D-pad
+document.querySelectorAll('.dpad button[data-dir]').forEach(b=>{
+  b.onclick = () => move(b.dataset.dir);
+});
+
+// Keyboard
+const KEYS = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+  w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right'
+};
+window.addEventListener('keydown', e => {
+  const dir = KEYS[e.key];
+  if (dir){ e.preventDefault(); move(dir); }
+});
+
+// Mute
 $('muteBtn').onclick = () => {
   Sound.init();
   Sound.muted = !Sound.muted;
@@ -487,7 +732,7 @@ $('muteBtn').onclick = () => {
   if (!Sound.muted) Sound.click();
 };
 
-// Prime/unlock audio on the very first user interaction anywhere on the page
+// Prime/unlock audio on first interaction anywhere
 ['pointerdown','keydown','touchstart'].forEach(ev =>
   window.addEventListener(ev, () => Sound.init(), { once: true })
 );
