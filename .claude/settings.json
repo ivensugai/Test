@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "create_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c 'if ((.tool_input.contentMimeType // \"\") | test(\"markdown|text/plain\")) or ((.tool_input.title // \"\") | endswith(\".md\")) then (if .tool_input.disableConversionToGoogleType == true then empty else {hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"Google Drive would convert this upload to a Google Doc, stripping every Markdown character (#, **, |, >). The user asked for Markdown. Re-issue the call with disableConversionToGoogleType: true.\"}} end) else empty end'",
+            "timeout": 10,
+            "statusMessage": "Checking Markdown upload fidelity"
+          }
+        ]
+      }
+    ]
+  }
+}
